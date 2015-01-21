@@ -1,4 +1,6 @@
-package matching
+package oalg.algebra.matching
+
+import oalg.algebra.core.Algebras.AlgebraDefault
 
 object Matching {
 
@@ -7,13 +9,9 @@ object Matching {
     def Add(e1 : In, e2 : In) : Out
   }
 
-  //trait YanlinAlg[Exp] extends ExpAlg[Exp,Exp] 
-
   trait InvExp[Exp] {
     val fromLit : Option[Int]
     val fromAdd : Option[(Exp, Exp)]
-    // fromLit (Lix x) = Some(x) 
-    // fromAdd (Add e1 e2) = Some (e1,e2) 
   }
 
   trait InvExpAlg[In] extends ExpAlg[In, InvExp[In]] {
@@ -32,38 +30,33 @@ object Matching {
   trait Eval {
     def eval : Int
   }
+  
+  /*
+  trait Eval[In] {
+    def eval : Int
+  }*/
 
-  trait PatternExpAlg[In <: InvExp[In], Out] extends ExpAlg[In, Out] { //Invertable observations for any constructor! 
+  trait PatternExpAlg[In <: InvExp[In], Out] extends ExpAlg[In, Out] { //Invertible observations for any constructor! 
     // Adding observations 
     //def fromLit(e : In) : Option[Int] = e.fromLit 
     //def fromAdd(e : In) : Option[(In,In)] = e.fromAdd 
 
     // Adding Observations with sugar! 
-    object Lit {
-      def unapply(e : In) : Option[Int] = e.fromLit
-    }
-
-    object Add {
-      def unapply(e : In) : Option[(In, In)] = e.fromAdd
-    }
+    object Lit { def unapply(e : In) : Option[Int] = e.fromLit }
+    object Add { def unapply(e : In) : Option[(In, In)] = e.fromAdd }
   }
 
   trait EvalExpAlg[In <: InvExp[In] with Eval] extends PatternExpAlg[In, Eval] {
-    def Lit(x : Int) = new Eval {
-      def eval = x
-    }
+    def Lit(x : Int) = new Eval { def eval = x }
+
     def Add(e1 : In, e2 : In) = new Eval {
-      /* 
-def eval = e1.fromLit match { 
-case Some(n) => System.out.println("Been here"); n + e2.eval 
-case None => e1.eval + e2.eval 
-}*/
+      //      def eval = e1.fromLit match { 
+      //        case Some(n) => System.out.println("Been here"); n + e2.eval 
+      //        case None => e1.eval + e2.eval 
+      //      }  
       def eval = e1 match {
-        case Lit(n) =>
-          System.out.println("Been here"); n + e2.eval // calls fromLit 
-        case Add(_, _) =>
-          System.out.println("Been there"); e1.eval +
-            e2.eval // calls fromAdd 
+        case Lit(n) => System.out.println("Been here"); n + e2.eval
+        case Add(_, _) => System.out.println("Been there"); e1.eval + e2.eval
         case _ => e1.eval + e2.eval
       }
     }
@@ -106,6 +99,12 @@ case None => e1.eval + e2.eval
     def Add(e1 : EvalInvExp, e2 : EvalInvExp) = mix(evalExpAlg.Add(e1,
       e2), invExpAlg.Add(e1, e2))
   }
+  
+  //trait Merge[F[_],G[_],In] extends ExpAlg[EvalInvExp, EvalInvExp] {
+  //  def Lit(x : Int) = mix(evalExpAlg.Lit(x), invExpAlg.Lit(x))
+  //  def Add(e1 : EvalInvExp, e2 : EvalInvExp) = mix(evalExpAlg.Add(e1,
+  //    e2), invExpAlg.Add(e1, e2))
+  //}
 
   object EvalWithInAlg extends EvalWithInAlg
 
@@ -113,4 +112,29 @@ case None => e1.eval + e2.eval
 
   def test = System.out.println(exp(EvalWithInAlg).eval) // combine(evalAlg,invAlg) 
 
+  
+}
+//  object Test {
+//    import Exp._
+//    object ExpComb extends Algebra[ExpAlg]
+//  
+//    def test = {
+//      import ExpComb._
+//      val o = exp(merge[IEval, IPrint](LiftEP,ExpEval,ExpPrint))
+//      println("Eval: " + o.eval() + "\nPrint:" + o.print())
+//    }
+//  }
+object Test {
+  import Matching._
+  object ExpComb extends AlgebraDefault[ExpAlg]
+  
+  def test = {
+    import ExpComb._
+  }
+}
+
+object Main {
+  def main(args : Array[String]) {
+    val t = Matching.test
+  }
 }
