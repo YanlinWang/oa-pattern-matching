@@ -11,7 +11,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
 
-package oalg.algebra.aspects
+package aspects
 
 object Circular {
   // globals

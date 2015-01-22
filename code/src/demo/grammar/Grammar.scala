@@ -11,11 +11,11 @@
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
 
-package oalg.algebra.demo.grammar
+package demo.grammar
 
-import oalg.algebra.core.Algebras.AlgebraDefault
-import oalg.algebra.core.Algebras.Open
-import oalg.algebra.core.Algebras.SelfFAlg
+import core.Algebras.AlgebraDefault
+import core.Algebras.Open
+import core.Algebras.SelfFAlg
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.MutableList
 import java.io.Writer
@@ -265,7 +265,7 @@ object Grammar {
   }
   
   class CircNullable extends (Nullable => Nullable) {
-    import oalg.algebra.aspects.Circ
+    import aspects.Circ
     type G = Map[String, Nullable]
     override def apply(n: Nullable): Nullable = {
       val sup = new Circ[Boolean, G](false, n.nullable _)
@@ -276,7 +276,7 @@ object Grammar {
   }
   
   class CircFirst extends (First => First) {
-    import oalg.algebra.aspects.Circ
+    import aspects.Circ
     type G = Map[String, Nullable with First]
     override def apply(f: First): First = {
       val sup = new Circ[Set[String], G](Set(), f.first _)

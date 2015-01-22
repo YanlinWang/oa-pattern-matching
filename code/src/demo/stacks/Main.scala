@@ -10,10 +10,10 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
-package oalg.algebra.demo.stacks
+package demo.stacks
 
-import oalg.algebra.demo.stacks.Stacks._
-import oalg.algebra.core.Algebras.Lifter
+import demo.stacks.Stacks._
+import core.Algebras.Lifter
 
 trait DStack extends Stack {
   val st: Stack

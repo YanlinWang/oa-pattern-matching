@@ -10,7 +10,7 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
-package oalg.algebra.paper
+package paper
 
 import scala.collection.mutable.HashMap
 import scala.reflect._
@@ -42,7 +42,7 @@ object Self {
   object ExpEval extends ExpEval
   
   // Use the core algebra types and combinators
-  import oalg.algebra.core.Algebras._
+  import core.Algebras._
   
   class LiftEP[S <: IEval with IPrint] extends Lifter[IEval,IPrint,S] {
     def lift(x : IEval, y : IPrint) = self => new IEval with IPrint {

@@ -1,6 +1,6 @@
-package oalg.algebra.matching
+package matching
 
-import oalg.algebra.core.Algebras.AlgebraDefault
+import core.Algebras.AlgebraDefault
 
 object Matching {
 

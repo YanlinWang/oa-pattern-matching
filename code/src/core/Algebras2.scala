@@ -11,7 +11,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
 
-package oalg.algebra.core
+package core
 
 object Algebras2 {
   import scala.reflect._
@@ -114,7 +114,7 @@ object Exp {
   trait IEval {
     def eval() : Int
   }
-  
+
   trait PatternExpAlg[In <: InvExp[In], Out] extends ExpAlg[In, Out] { //Invertible observations for any constructor! 
     // Adding observations 
     //def fromLit(e : In) : Option[Int] = e.fromLit 
@@ -132,7 +132,7 @@ object Exp {
       def eval =  e1.eval + e2.eval
     }
   }
-  
+
   trait EvalExpAlg2[In <: InvExp[In] with IEval] extends PatternExpAlg[In, IEval] {
     def Lit(x : Int) = new IEval { def eval = x }
 

@@ -10,9 +10,9 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
-package oalg.algebra.demo.stacks
+package demo.stacks
 
-import oalg.algebra.core.Algebras._
+import core.Algebras._
 import scala.reflect._
 
 object Stacks {

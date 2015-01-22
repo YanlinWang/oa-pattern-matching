@@ -10,7 +10,7 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
 ********************************************************************************/
-package oalg.algebra.paper
+package paper
 
 import scala.collection.mutable.HashMap
 import scala.reflect._
