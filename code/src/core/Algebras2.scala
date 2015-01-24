@@ -84,6 +84,7 @@ object Algebras2 {
 }
 
 object Exp {
+  import Algebras2.Lifter
 
   trait ExpAlg[In, Out] {
     def Lit(x : Int) : Out
@@ -110,6 +111,8 @@ object Exp {
   }
 
   def invExpAlg[In] : ExpAlg[In,InvExp[In]] = new InvExpAlg[In] {}
+  
+   
    
   trait IEval {
     def eval() : Int
@@ -132,7 +135,7 @@ object Exp {
       def eval =  e1.eval + e2.eval
     }
   }
-
+  
   trait EvalExpAlg2[In <: InvExp[In] with IEval] extends PatternExpAlg[In, IEval] {
     def Lit(x : Int) = new IEval { def eval = x }
 
@@ -167,6 +170,14 @@ object Exp {
   
   def ExpPrint[In <: IPrint] : ExpAlg[In,IPrint] = new PrintExpAlg[In] {}
 
+  
+  object LiftEP extends Lifter[IEval,IPrint] {
+    def lift(x : IEval, y : IPrint) = new IEval with IPrint {
+      def print() = y.print()
+      def eval() = x.eval()
+    }
+  }
+  
   object evalExpAlg extends EvalExpAlg[EvalInvExp]
   
   trait EvalInvExp extends InvExp[EvalInvExp] with IEval
@@ -192,17 +203,88 @@ object Exp {
     //def conv[In](InvExp[In] with IEval) : In
   }
   
-  def test = {
-   def mymerge[In <: InvExp[In] with IEval] : ExpAlg[In,InvExp[In] with IEval]= 
-     merge[InvExp[In],IEval, In](lifter2,invExpAlg,ExpEval2)
+  /*
+   def merge[A,B,S <: A with B](mix : Lifter[A,B], a1 : F[S,A], a2 : F[S,B]) (implicit m : ClassTag[F[S,A with B]]) : F[S,A with B] = 
+      createInstance[F[S, A with B]](new java.lang.reflect.InvocationHandler() {
+      def invoke(proxy : Object, method : java.lang.reflect.Method, args : Array[Object]) : Object = {
+        val a = method.invoke(a1,args : _*) 
+        val b = method.invoke(a2,args : _*)
+        mix.lift(a.asInstanceOf[A],b.asInstanceOf[B]).asInstanceOf[Object]
+      }
+    })
+   */
+  
+  // Editing Start
+  
+    trait ExpMerge[A, B, SA <: A, SB <: B, S <: SA with SB] extends ExpAlg[S, A with B] {
+    val lifter : Lifter[A,B]
+    val alg1  : ExpAlg[SA, A]
+    val alg2  : ExpAlg[SB, B]
+  
+    def Lit(x : Int) : A with B =
+      lifter.lift(alg1.Lit(x),alg2.Lit(x))
     
-   def composition = mymerge[EvalInvExp].asInstanceOf[ExpAlg[InvExp[EvalInvExp] with IEval,InvExp[EvalInvExp] with IEval]]
-   val o = exp(composition)
+    def Add(e1 : S, e2 : S) : A with B =
+      lifter.lift(alg1.Add(e1, e2),alg2.Add(e1, e2))
+  }
+  trait combEvalPrint extends ExpMerge[IEval, IPrint, IEval, IPrint, IEval with IPrint] {
+    val lifter = LiftEP
+    val alg1 = ExpEval[IEval]
+    val alg2 = ExpPrint[IPrint] 
+  }
+  object combEvalPrint extends combEvalPrint
+  
+  trait ExpMerge2[A, B, S <: A with B] extends ExpAlg[S, A with B] {
+    type SA <: A
+    type SB <: B 
+    type S <: SA with SB
+    
+    val lifter : Lifter[A,B]
+    val alg1  : ExpAlg[SA, A]
+    val alg2  : ExpAlg[SB, B]
+  
+    def Lit(x : Int) : A with B =
+      lifter.lift(alg1.Lit(x),alg2.Lit(x))
+    
+    def Add(e1 : S, e2 : S) : A with B =
+      lifter.lift(alg1.Add(e1, e2),alg2.Add(e1, e2))
+  }
+
+  trait combEvalPrint2 extends ExpMerge2[IEval, IPrint, IEval with IPrint] {
+    val lifter = LiftEP
+    val alg1 = ExpEval[IEval] 
+    val alg2 = ExpPrint[IPrint] 
+  }
+  object combEvalPrint2 extends combEvalPrint2
+  
+  /*
+  trait combInvEval extends ExpMerge[InvExp[EvalInvExp], IEval, InvExp[EvalInvExp] with IEval] {
+    val alg1 = invExpAlg[EvalInvExp] // : ExpAlg[InvExp[EvalInvExp], InvExp[EvalInvExp]] 
+    val alg2 = ExpEval2 //: ExpAlg[InvExp[EvalInvExp] with IEval, IEval]
+    val lifter = lifter2  
+  }
+  * 
+  */
+ 
+  //Editing End
+    
+  def test = {
+//   def mymerge[In <: InvExp[In] with IEval] : ExpAlg[In,InvExp[In] with IEval]= 
+//     merge[InvExp[In],IEval, In](lifter2,invExpAlg,ExpEval2)
+//    
+//   def composition = mymerge[EvalInvExp].asInstanceOf[ExpAlg[InvExp[EvalInvExp] with IEval,InvExp[EvalInvExp] with IEval]]
+//   val o = exp(composition)
    //val o = exp(merge[InvExp[In],IEval, IEval with IPrint](lifter,ExpEval,ExpPrint))
-   //val o2 = exp(merge[IEval, IPrint, IEval with IPrint](lifter,ExpEval,ExpPrint))
+//   val o2 = exp(merge[IEval, IPrint, IEval with IPrint](lifter,ExpEval,ExpPrint))
    //val o = exp(combine[IEval, IPrint, IEvalPrint](ExpEval,ExpPrint.asInstanceOf[ExpAlg[IEvalPrint,IPrint]]))
    
-   println("Eval: " + o.eval())
+//   println("Eval: " + o.eval())
+    
+    
+      val e = exp(combEvalPrint)
+      println("============== combine Eval Print =============")
+      println("Eval: " + e.eval + "\nPrint: " + e.print)
+      
   }
   
   //def test = System.out.println(exp(EvalWithInAlg).eval) 
