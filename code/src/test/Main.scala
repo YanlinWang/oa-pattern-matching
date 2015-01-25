@@ -35,8 +35,13 @@ object Exp {
   }
   def pf[S <: IPrint] : OpenExpAlg[S,IPrint] = 
     s => new PF[S] { lazy val fself = s }
-  
-  
+
+  object LiftEP extends Lifter[IEval, IPrint, IEval with IPrint] {
+    def lift(e : IEval, p : IPrint) = self => new IEval with IPrint {
+      def eval = e.eval
+      def print = p.print
+    }
+  }
 }
 
 object ExpComb extends AlgebraDefault[ExpAlg] 
@@ -66,8 +71,15 @@ object Main extends App {
     val o = exp[IPrint](fclose(pf))
     println(o.print)
   }
+  
+  // combine version : with ClassCastException
+  def testEP_combine() = {
+    val o = exp[IEval with IPrint](fclose(combine[IEval,IPrint,IEval with IPrint](ef, pf))) // exception line
+    println("Eval: " + o.eval + "\nPrint: " + o.print)
+  }
+  // merge version : no run-time errors, but have to define the lifter LiftEP
   def testEP() = {
-    val o = exp[IEval with IPrint](fclose(combine[IEval,IPrint,IEval with IPrint](ef, pf)))
+    val o = exp[IEval with IPrint](fclose(merge[IEval,IPrint,IEval with IPrint](LiftEP, ef, pf)))
     println("Eval: " + o.eval + "\nPrint: " + o.print)
   }
 }
