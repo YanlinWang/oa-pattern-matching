@@ -58,9 +58,10 @@ object Main extends App {
     println(">>> Print Feature")
     testPrint()
     
-    // TODO : error test, combine eval and print feature  
+    // TODO : this test causes run-time exception
     println(">>> Eval + Print")
     testEP()
+    testEP_combine()
   }
   
   def testEval() = {
@@ -74,7 +75,8 @@ object Main extends App {
   
   // combine version : with ClassCastException
   def testEP_combine() = {
-    val o = exp[IEval with IPrint](fclose(combine[IEval,IPrint,IEval with IPrint](ef, pf))) // exception line
+    type EP = IEval with IPrint
+    val o = exp[EP](fclose(combine[IEval,IPrint,EP](ef, pf))) // exception line
     println("Eval: " + o.eval + "\nPrint: " + o.print)
   }
   // merge version : no run-time errors, but have to define the lifter LiftEP
