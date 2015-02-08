@@ -31,6 +31,8 @@ object Algebras2 {
     def merge[A, B, S <: A with B](mix : Lifter[A, B], a1 : F[S, A], a2 : F[S, B]) : F[S, A with B]
     def empty[S] : F[S, Any]
 
+    //
+    def close[S <: A with B, A, B](alg : F[S, A with B]) : F[A with B, A with B] = alg.asInstanceOf[F[A with B, A with B]]
   }
 
   def createInstance[A](ih : java.lang.reflect.InvocationHandler)(implicit m : ClassTag[A]) : A = {
@@ -143,11 +145,11 @@ object Exp {
       //        case None => e1.eval + e2.eval 
       //      }  
       def eval = e1 match {
-        case Lit(n)    =>
+        case Lit(n) =>
           System.out.println("Been here"); n + e2.eval
         case Add(_, _) =>
           System.out.println("Been there"); e1.eval + e2.eval
-        case _         => e1.eval + e2.eval
+        case _ => e1.eval + e2.eval
       }
     }
   }

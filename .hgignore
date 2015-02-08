@@ -1,2 +1,12 @@
 syntax: glob
 *.class
+
+code/.cache
+
+./resources/*
+
+notes/auto/*
+notes/paper.{aux,bbl,blg,log,out}
+
+
+

@@ -1,0 +1,267 @@
+%\documentclass[preprint]{sigplanconf}
+
+\documentclass[preprint]{llncs}
+
+
+\usepackage{color}
+
+\usepackage{amsmath}
+\usepackage{stmaryrd}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{fancyvrb}
+\usepackage{url}
+\usepackage{pstricks,pst-node,pst-tree}
+\usepackage{theorem}
+%% \usepackage{mathpartir}
+\usepackage{bbm}
+\usepackage{pgf}
+\usepackage{multirow}
+
+\usepackage{listings}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+
+\usepackage[T1]{fontenc}
+\usepackage[scaled=0.85]{beramono}
+
+% "define" code highlights for Java and Scala
+\lstdefinelanguage{JavaScala}{
+  morekeywords={public,int,interface,implements,default,
+    abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]"""
+}
+
+\lstset{ %
+language=JavaScala,                % choose the language of the code
+columns=flexible,
+lineskip=-1pt,
+basicstyle=\ttfamily\small,       % the size of the fonts that are used for the code
+numbers=none,                   % where to put the line-numbers
+numberstyle=\ttfamily\tiny,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it's 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+morekeywords={var},
+%  frame=single,                   % adds a frame around the code
+tabsize=2,                  % sets default tabsize to 2 spaces
+captionpos=none,                   % sets the caption-position to bottom
+breaklines=true,                % sets automatic line breaking
+breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+title=\lstname,                 % show the filename of files included with \lstinputlisting; also try caption instead of title
+escapeinside={(*}{*)},          % if you want to add a comment within your code
+keywordstyle=\ttfamily\bfseries,
+% commentstyle=\color{Gray},
+% stringstyle=\color{Green}
+}
+
+
+%%\usepackage{natbib}
+%%\bibpunct();A{},
+%%\let\cite=\citep
+
+%include lhs2TeX.fmt
+%include lhs2TeX.sty
+%include forall.fmt
+
+\pagestyle{plain}
+
+%{\theorembodyfont{\sffamily} \newtheorem{theorem}{Theorem}}
+%{\theorembodyfont{\sffamily} \newtheorem{lemma}{Lemma}}
+%\newtheorem{theorem}{Theorem}
+%\newtheorem{lemma}{Lemma}
+%\newenvironment{proof}{\textbf{Proof:\hspace{4mm}}}{$\Box$}
+\newcommand{\authornote}[3]{{\color{#2} {\sc #1}: #3}}
+\newcommand\william[1]{\authornote{william}{green}{#1}}
+%%\newcommand\tom[1]{\authornote{tom}{red}{#1}}
+\newcommand\bruno[1]{\authornote{bruno}{red}{#1}}
+\newcommand\yanlin[1]{\authornote{yanlin}{green}{#1}}
+%%\newcommand\bruno[1]{}
+
+\newcommand{\hl}[1]{\textcolor{red}{#1}}
+
+\newcommand\sem[1]{\llbracket #1 \rrbracket_r}
+\newcommand\sems[1]{\llbracket #1 \rrbracket_s}
+\newcommand\tsem[1]{\llbracket #1 \rrbracket}
+\newcommand{\rbm}[1]{\raisebox{-2.0ex}[0.5ex]{#1}}
+\newcommand\nat[0]{\mathbb{N}}
+\newcommand\unit[0]{\mathbbm{1}}
+
+%\renewcommand{\mathindent}{0pt}
+
+
+\begin{comment}
+\author{Bruno C. d. S. Oliveira and Yanlin Wang}
+\institute{The University of Hong Kong\\
+\email{\{bruno,ylwang\}@cs.hku.hk}\\
+\authorrunning{Bruno Oliveira and Yanlin Wang}} % abbreviated author list (for running head)
+\end{comment}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\title{oapatternmatching}
+%%\subtitle{Solving The Expression Problem with Covariant Return Types}
+%% Poor Man's Family Polymorphism
+
+\maketitle
+
+\begin{abstract}
+Abstract
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+Introduction
+
+\section{Problem}\label{sec:ep}
+We have seen a lot of cool usage of Object Algebras\cite{}, and the
+extensibility of OAs allows us to build extensible and composible
+systems when dealing with recursive data types. But sometimes for some
+definitions we need to do pattern matching (examples will be given
+later). Using pattern matching is convenient, if not provided, there
+are still ways to do it\cite{}, but then it would be very complicated
+to define some terms.
+
+For example, in the MDSLCS paper\cite{Hofer:2010:MDL:1868294.1868307},
+the Domain-Specific Language of Regions are defined with the
+optimization in the union definition: In the union(reg1,reg2)
+operator, they want to figure out whether reg1 or reg2 is the
+universal region, if so, do the optimization: the result goes directly
+to the universal region, otherwise, do not optimize. Apparently, this
+optimization relies on pattern matching, and they use case classes in
+Scala to support this.
+
+Although case classes have much benefit in that they comes with
+constructors and pattern matching power, the drawback of case classes
+is obvious: hard to deal with new cases (possibly need to explain
+more). 
+
+Another example is equality function, that checks whether two
+expressions are syntactically equal or not. This operations needs to
+traverse the two expressions and compare their components, which
+apparently needs pattern matching. 
+
+The pattern matching power of case classes is what we don't have in
+OAs. For example, if we write the Region DSL using OA, the language
+interface would be like:
+
+\begin{lstlisting}
+  trait RegionAlg[Region] {
+    def Univ() : Region
+    def Circle(radius : Double) : Region
+    def Union(reg1 : Region, reg2 : Region) : Region
+  }
+\end{lstlisting}
+
+With this region algebra signature, writing compositional
+interpretations like \texttt{EvalRegion} (in
+MDSLCS\cite{Hofer:2010:MDL:1868294.1868307}) is easy, it can be
+expressed as a normal algebra. But for non-compositional
+interpretations like \texttt{OptimizeRegion} that needs pattern
+matching, it's hard to express using OA.
+
+So the problem we want to solve is to improve OA with pattern matching
+power so that we can solve problems that needs both extensibility and
+non-compositional definitions using pattern matching.
+
+\section{Solution}
+(Solution shortly explained with the arithmatic expressions example.)
+
+\begin{enumerate}
+\item Define \texttt{ExpAlg} interface:
+  \begin{lstlisting}
+  trait ExpAlg[In, Out] {
+    def Lit(x : Int) : Out
+    def Add(e1 : In, e2 : In) : Out
+  }
+  \end{lstlisting}
+
+\item For \texttt{ExpAlg}, define the corresponding
+  \texttt{PatternExpAlg} that extends \texttt{ExpAlg} with the type
+  parameter \texttt{In} the subtype of \texttt{InvExp} (which give us
+  the pattern matching power using Scala's support of Options).
+  \begin{lstlisting}
+  trait InvExp[Exp] {
+    val fromLit : Option[Int]
+    val fromAdd : Option[(Exp, Exp)]
+  }
+  trait PatternExpAlg[In <: InvExp[In], Out] extends ExpAlg[In, Out] {
+    object Lit { def unapply(e : In) : Option[Int] = e.fromLit }
+    object Add { def unapply(e : In) : Option[(In, In)] = e.fromAdd }
+  }
+  \end{lstlisting}
+
+\item For any features that needs pattern matching, simply extending
+  \texttt{PatternExpAlg} will give us the pattern matching interface
+  automatically. For example, in the evaluation operation, we could do
+  pattern matching like this:
+  \begin{lstlisting}
+  trait EvalExpAlg[In <: InvExp[In] with Eval] extends PatternExpAlg[In, Eval] {
+    def Lit(x : Int) = new Eval { def eval = x }
+
+    def Add(e1 : In, e2 : In) = new Eval {
+      def eval = e1 match {
+        case Lit(n)    =>
+          System.out.println("Been here"); n + e2.eval
+        case Add(_, _) =>
+          System.out.println("Been there"); e1.eval + e2.eval
+        case _         => e1.eval + e2.eval
+      }
+    }
+  }
+  \end{lstlisting}
+
+\item To construct a concrete expression that supports evaluation and
+  pattern matching, we need to merge the \texttt{EvalExpAlg} with the
+  \texttt{InvExpAlg} below that really does the pattern matching job:
+  \begin{lstlisting}
+  trait InvExpAlg[In] extends ExpAlg[In, InvExp[In]] {
+    def Lit(x : Int) = new InvExp[In] {
+      val fromLit = Some(x)
+      val fromAdd = None
+    }
+    def Add(e1 : In, e2 : In) = new InvExp[In] {
+      val fromLit = None
+      val fromAdd = Some(e1, e2)
+    }
+  }
+  \end{lstlisting}
+
+  The merge operation can be easily defined just for merging
+  \texttt{EvalExpAlg} and \texttt{InvExpAlg}, for a generic merge, we
+  can use the infrastructure created in FOPwOA
+  paper\cite{Oliveira:2013:FPO:2524984.2524987}. (need to explain
+  more).
+
+
+\end{enumerate}
+
+\section{Related Work}\label{sec:related}
+
+\bibliographystyle{splncs}
+\bibliography{paper}
+
+\appendix
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "."
+%%% End:
