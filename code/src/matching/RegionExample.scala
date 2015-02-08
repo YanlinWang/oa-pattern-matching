@@ -3,10 +3,34 @@ package matching
 object RegionExample {
 
   trait RegionAlg[In, Out] {
-    def Univ() : Out
-    def Circle(radius : Double) : Out
-    def Union(reg1 : In, reg2 : In) : Out
+    def univ() : Out
+    def circle(radius : Double) : Out
+    def union(reg1 : In, reg2 : In) : Out
   }
+
+  trait Eval { def eval : (Double, Double) => Boolean }
+
+  trait EvalRegionAlg[In <: Eval] extends RegionAlg[In, Eval] {
+    def univ() : Eval = new Eval { def eval = (_, _) => true }
+    def circle(radius : Double) = new Eval { def eval = (x, y) => x * x + y * y <= radius * radius }
+    def union(reg1 : In, reg2 : In) = new Eval { def eval = (x, y) => reg1.eval(x, y) || reg2.eval(x, y) }
+  }
+  object evalRegionAlg extends EvalRegionAlg[Eval]
+
+  trait EvalRegionAlg2[In <: InvRegion[In] with Eval] extends PatternRegionAlg[In, Eval] {
+    def univ() : Eval = new Eval { def eval = (_, _) => true }
+    def circle(radius : Double) = new Eval { def eval = (x, y) => x * x + y * y <= radius * radius }
+    def union(reg1 : In, reg2 : In) = new Eval {
+      def eval = (x, y) => (reg1, reg2) match {
+        case (PUniv(_ : Unit), _) => true
+        case (_, PUniv(_ : Unit)) => true
+        case _                    => reg1.eval(x, y) || reg2.eval(x, y)
+      }
+    }
+  }
+  def evalRegionAlg2[In <: InvRegion[In] with Eval] : PatternRegionAlg[In, Eval] = new EvalRegionAlg2[In] {}
+
+  trait EvalInv extends Eval with InvRegion[EvalInv]
 
   trait InvRegion[R] {
     val fromUniv : Option[Unit]
@@ -15,104 +39,147 @@ object RegionExample {
   }
 
   trait InvRegionAlg[In] extends RegionAlg[In, InvRegion[In]] {
-    def Univ() = new InvRegion[In] {
+    def univ() = new InvRegion[In] {
       val fromUniv = Some()
       val fromCircle = None
       val fromUnion = None
     }
-    def Circle(radius : Double) = new InvRegion[In] {
+    def circle(radius : Double) = new InvRegion[In] {
       val fromUniv = None
       val fromCircle = Some(radius)
       val fromUnion = None
     }
-    def Union(reg1 : In, reg2 : In) = new InvRegion[In] {
+    def union(reg1 : In, reg2 : In) = new InvRegion[In] {
       val fromUniv = None
       val fromCircle = None
       val fromUnion = Some(reg1, reg2)
     }
   }
+  def invRegionAlg2[In] : RegionAlg[In, InvRegion[In]] = new InvRegionAlg[In] {}
 
   trait PatternRegionAlg[In <: InvRegion[In], Out] extends RegionAlg[In, Out] {
-    object Unive { def unapply(e : In) : Option[Unit] = e.fromUniv }
-    object Circle { def unapply(e : In) : Option[Double] = e.fromCircle }
-    object Union { def unapply(e : In) : Option[(In, In)] = e.fromUnion }
+    object PUniv { def unapply(e : In) : Option[Unit] = e.fromUniv }
+    object PCircle { def unapply(e : In) : Option[Double] = e.fromCircle }
+    object PUnion { def unapply(e : In) : Option[(In, In)] = e.fromUnion }
   }
 
-  trait OptimizeRegion[In <: InvRegion[In], Out] extends PatternRegionAlg[In, Out] {
-    def Union(reg1 : In, reg2 : In) : Out = (reg1, reg2) match {
-      case (Unive(_ : Unit), _) => Univ()
-      case (_, Unive(_ : Unit)) => Univ()
-      case _                    => Union(reg1, reg2)
-    }
-  }
-
-  trait EvalRegionAlg[In <: Eval] extends RegionAlg[In, Eval] {
-    def Univ() = (_, _) => true
-    def Circle(radius : Double) = (x, y) => x * x + y * y <= radius * radius
-    def Union(reg1 : In, reg2 : In) = (x, y) => reg1(x, y) || reg2(x, y)
-  }
-
-  trait EvalRegionAlg2[In <: InvRegion[In] with Eval] extends PatternRegionAlg[In, Eval] {
-    def Univ = (x, y) => true
-    def Circle(radius : Double) = (x, y) => x * x + y * y <= radius * radius
-    def Union(reg1 : In, reg2 : In) = (reg1, reg2) match {
-      case (Unive(_ : Unit), _) => Univ()
-      case (_, Unive(_ : Unit)) => Univ()
-      case _                    => (x, y) => reg1(x, y) || reg2(x, y)
-    }
-  }
-
-  type Eval = (Double, Double) => Boolean
-  trait InvEval extends Eval with InvRegion[InvEval]
-
-  trait RegionAST[R] { //regAST =>
+  trait RegionAST[R] {
     trait RExp {
       def acceptI(v : IVisitor) : R
-      //def acceptE(v : EVisitor) : R
     }
     case class Univ() extends RExp {
-      def acceptI(v : IVisitor) : R = v.Univ()
-      //def acceptE[R](v : EVisitor[R]) : R = v.univ
+      def acceptI(v : IVisitor) : R = v.univ()
     }
     case class Circle(radius : Double) extends RExp {
-      def acceptI(v : IVisitor) : R = v.Circle(radius)
-      //def acceptE[R](v : EVisitor[R]) : R = v.circle(radius)
+      def acceptI(v : IVisitor) : R = v.circle(radius)
     }
     case class Union(reg1 : RExp, reg2 : RExp) extends RExp {
-      def acceptI(v : IVisitor) : R =
-        v.Union(reg1.acceptI(v), reg2.acceptI(v))
-      //def acceptE[R](v : EVisitor[R]) : R = v.union(reg1, reg2)
+      def acceptI(v : IVisitor) : R = v.union(reg1.acceptI(v), reg2.acceptI(v))
     }
     type IVisitor <: RegionAlg[R, R]
-    //type EVisitor[R] <: RegionEVisitor[RExp, R]
   }
-  trait RegionEVisitor[RExp, Region] {
-    def univ : Region
-    def circle(radius : Double) : Region
-    def union(reg1 : RExp, reg2 : RExp) : Region
+
+  trait RegionASTSealed[R] extends RegionAST[R] {
+    type IVisitor = RegionAlg[R, R]
   }
-  trait RegionASTSealed[RExp, R] extends RegionAST[R] {
-    type IVisitor = RegionAlg[RExp, R]
-    type EVisitor = RegionEVisitor[RExp, R]
+
+  trait ReifyRegionWrapper[R] {
+    val regAST : RegionAST[R]
+    import regAST._
+    trait ReifyRegionAlg[In <: /*InvRegion[In] with */ RExp] extends RegionAlg[In, RExp] {
+      def univ() : RExp = Univ()
+      def circle(radius : Double) : RExp = Circle(radius)
+      def union(reg1 : In, reg2 : In) : RExp = Union(reg1, reg2)
+    }
+    trait OptimizeRegionAlg[In <: InvRegion[In] with RExp] extends PatternRegionAlg[In, RExp] {
+      def univ() : RExp = Univ()
+      def circle(radius : Double) : RExp = Circle(radius)
+      def union(reg1 : In, reg2 : In) : RExp = (reg1, reg2) match {
+        case (PUniv(_), _) => Univ()
+        case (_, PUniv(_)) => Univ()
+        case _             => Union(reg1, reg2)
+      }
+    }
+    trait OptimizeInv extends RExp with InvRegion[OptimizeInv]
   }
 
   // Testing 
 
-  def main(args : Array[String]) {
-    test1() // EvalRegionAlg
-    test2() // EvalRegionAlg2    
+  def test4() {
+    println(">>> Testing ReifyRegionAlg")
+    object wrapper extends ReifyRegionWrapper[Eval] { val regAST = new RegionASTSealed[Eval] {} }
+    import wrapper._
+    import regAST.RExp
+
+    object reifyRegionAlg extends ReifyRegionAlg[RExp]
+    val o = { import reifyRegionAlg._; union(circle(1.0), circle(1.0)) }
+    println(o.acceptI(evalRegionAlg).eval(0.5, 1.5))
+
+    object optimizeRegionAlg extends OptimizeRegionAlg[OptimizeInv]
+    //val o2 = { import optimizeRegionAlg._; union(circle(1.0), univ()) }
+    //println(o2.acceptI(evalAlg).eval(100, 100))
   }
 
-  def makeRegion[R](alg : RegionAlg[R, R]) = { import alg._; Union(Circle(1.0), Circle(1.0)) }
+  def main(args : Array[String]) {
+    test1()
+    test2()
+    test3()
+    test4()
+  }
+
+  def makeRegion[R](alg : RegionAlg[R, R]) = { import alg._; union(circle(1.0), circle(1.0)) }
 
   def test1() = {
-    object evalAlg extends EvalRegionAlg[Eval]
-    val o = makeRegion(evalAlg)
-    println("Is (1.0, 3.0) inside it? " + o(1, 3))
+    println(">>> Testing EvalRegionAlg")
+    val o = makeRegion(evalRegionAlg)
+    println("Is (1.0, 3.0) inside it? " + o.eval(1, 3))
   }
+
+  trait RegionMerge[S, A, B] extends RegionAlg[S, A with B] {
+    val lift : A => B => A with B
+    val alg1 : RegionAlg[S, A]
+    val alg2 : RegionAlg[S, B]
+
+    def univ() : A with B = lift(alg1.univ)(alg2.univ)
+    def circle(radius : Double) : A with B = lift(alg1.circle(radius))(alg2.circle(radius))
+    def union(reg1 : S, reg2 : S) : A with B = lift(alg1.union(reg1, reg2))(alg2.union(reg1, reg2))
+  }
+
+  def regionMerge[S, A, B](mix : A => B => A with B, a1 : RegionAlg[S, A], a2 : RegionAlg[S, B]) : RegionAlg[S, A with B] =
+    new RegionMerge[S, A, B] {
+      val lift = mix
+      val alg1 = a1
+      val alg2 = a2
+    }
+
+  def mixEvalInv[In] : Eval => InvRegion[In] => Eval with InvRegion[In] = a => b => new Eval with InvRegion[In] {
+    val fromUniv = b.fromUniv
+    val fromCircle = b.fromCircle
+    val fromUnion = b.fromUnion
+    def eval = a.eval
+  }
+
+  def closeS[S <: A with B, A, B](alg : RegionAlg[S, A with B]) : RegionAlg[A with B, A with B] = alg.asInstanceOf[RegionAlg[A with B, A with B]]
+
   def test2() = {
-    object areaAlg2 extends EvalRegionAlg2[InvEval] // areaAlg2 : RegionAlg[,Area]
-    val o = { import areaAlg2._; Univ }
-    println("Is (0.5,0.5) inside it? " + o(0.5, 0.5))
+    println(">>> Testing EvalRegionAlg2")
+    object evalRegionAlg2 extends EvalRegionAlg2[EvalInv] // areaAlg2 : RegionAlg[,Area]
+
+      def pre[In <: InvRegion[In] with Eval] : RegionAlg[In, InvRegion[In] with Eval] =
+        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, new EvalRegionAlg2[In] {}, invRegionAlg2)
+
+      def pre2 : RegionAlg[EvalInv, Eval with InvRegion[EvalInv]] = pre[EvalInv]
+
+      def o = makeRegion(closeS(pre2))
+
+    println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
+  }
+
+  def test3() = {
+    println(">>> Testing InvRegionAlg")
+    object invAlg extends InvRegionAlg[InvRegion[Eval]]
+    val o = { import invAlg._; univ() }
+    println(o.fromUniv)
+    println(o.fromUnion)
   }
 }
