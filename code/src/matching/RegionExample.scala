@@ -10,6 +10,7 @@ object RegionExample {
 
   trait Eval { def eval : (Double, Double) => Boolean }
 
+  // simple eval region
   trait EvalRegionAlg[In <: Eval] extends RegionAlg[In, Eval] {
     def univ() : Eval = new Eval { def eval = (_, _) => true }
     def circle(radius : Double) = new Eval { def eval = (x, y) => x * x + y * y <= radius * radius }
@@ -17,6 +18,7 @@ object RegionExample {
   }
   object evalRegionAlg extends EvalRegionAlg[Eval]
 
+  // eval region that supports pattern matching
   trait EvalRegionAlg2[In <: InvRegion[In] with Eval] extends PatternRegionAlg[In, Eval] {
     def univ() : Eval = new Eval { def eval = (_, _) => true }
     def circle(radius : Double) = new Eval { def eval = (x, y) => x * x + y * y <= radius * radius }
@@ -101,25 +103,10 @@ object RegionExample {
       }
     }
     trait OptimizeInv extends RExp with InvRegion[OptimizeInv]
+    def optimizeRegionAlg2[In <: InvRegion[In] with RExp] = new OptimizeRegionAlg[In] {}
   }
 
   // Testing 
-
-  def test4() {
-    println(">>> Testing ReifyRegionAlg")
-    object wrapper extends ReifyRegionWrapper[Eval] { val regAST = new RegionASTSealed[Eval] {} }
-    import wrapper._
-    import regAST.RExp
-
-    object reifyRegionAlg extends ReifyRegionAlg[RExp]
-    val o = { import reifyRegionAlg._; union(circle(1.0), circle(1.0)) }
-    println(o.acceptI(evalRegionAlg).eval(0.5, 1.5))
-
-    object optimizeRegionAlg extends OptimizeRegionAlg[OptimizeInv]
-    //val o2 = { import optimizeRegionAlg._; union(circle(1.0), univ()) }
-    //println(o2.acceptI(evalAlg).eval(100, 100))
-  }
-
   def main(args : Array[String]) {
     test1()
     test2()
@@ -163,16 +150,44 @@ object RegionExample {
 
   def test2() = {
     println(">>> Testing EvalRegionAlg2")
-    object evalRegionAlg2 extends EvalRegionAlg2[EvalInv] // areaAlg2 : RegionAlg[,Area]
 
       def pre[In <: InvRegion[In] with Eval] : RegionAlg[In, InvRegion[In] with Eval] =
-        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, new EvalRegionAlg2[In] {}, invRegionAlg2)
+        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, evalRegionAlg2, invRegionAlg2)
 
       def pre2 : RegionAlg[EvalInv, Eval with InvRegion[EvalInv]] = pre[EvalInv]
 
       def o = makeRegion(closeS(pre2))
 
     println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
+  }
+
+  def test4() {
+    println(">>> Testing ReifyRegionAlg")
+    object wrapper extends ReifyRegionWrapper[Eval] { val regAST = new RegionASTSealed[Eval] {} }
+    import wrapper._
+    import regAST.RExp
+
+    object reifyRegionAlg extends ReifyRegionAlg[RExp]
+    val o = { import reifyRegionAlg._; union(circle(1.0), circle(1.0)) }
+    println(o.acceptI(evalRegionAlg).eval(0.5, 1.5))
+
+    object optimizeRegionAlg extends OptimizeRegionAlg[OptimizeInv]
+    val o2 = { import optimizeRegionAlg._; univ() }
+    println(o2.acceptI(evalRegionAlg).eval(100, 100))
+
+    /* //error code TODO
+      def mixRExpInv[In] : RExp => InvRegion[In] => RExp with InvRegion[In] = a => b => new RExp with InvRegion[In] {
+        val fromUniv = b.fromUniv
+        val fromCircle = b.fromCircle
+        val fromUnion = b.fromUnion
+        def acceptI(v) = a.acceptI(v)
+      }
+
+      def pre[In <: InvRegion[In] with RExp] : RegionAlg[In, InvRegion[In] with RExp] =
+        regionMerge[In, RExp, InvRegion[In]](mixRExpInv, optimizeRegionAlg2, invRegionAlg2)
+        * 
+        */
+
   }
 
   def test3() = {
