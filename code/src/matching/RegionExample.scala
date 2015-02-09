@@ -1,6 +1,9 @@
 package matching
+import core.Algebras2.AlgebraDefault
 
 object RegionExample {
+  object RegionComb extends AlgebraDefault[RegionAlg]
+  import RegionComb._
 
   trait RegionAlg[In, Out] {
     def univ() : Out
@@ -57,7 +60,7 @@ object RegionExample {
       val fromUnion = Some(reg1, reg2)
     }
   }
-  def invRegionAlg2[In] : RegionAlg[In, InvRegion[In]] = new InvRegionAlg[In] {}
+  def invRegionAlg[In] : RegionAlg[In, InvRegion[In]] = new InvRegionAlg[In] {}
 
   trait PatternRegionAlg[In <: InvRegion[In], Out] extends RegionAlg[In, Out] {
     object PUniv { def unapply(e : In) : Option[Unit] = e.fromUniv }
@@ -103,7 +106,7 @@ object RegionExample {
       }
     }
     trait OptimizeInv extends RExp with InvRegion[OptimizeInv]
-    def optimizeRegionAlg2[In <: InvRegion[In] with RExp] = new OptimizeRegionAlg[In] {}
+    def optimizeRegionAlg[In <: InvRegion[In] with RExp] = new OptimizeRegionAlg[In] {}
   }
 
   // Testing 
@@ -120,6 +123,7 @@ object RegionExample {
     println(">>> Testing EvalRegionAlg")
     val o = makeRegion(evalRegionAlg)
     println("Is (1.0, 3.0) inside it? " + o.eval(1, 3))
+    println()
   }
 
   trait RegionMerge[S, A, B] extends RegionAlg[S, A with B] {
@@ -150,15 +154,22 @@ object RegionExample {
 
   def test2() = {
     println(">>> Testing EvalRegionAlg2")
-
+      // method 1: merge by hand
       def pre[In <: InvRegion[In] with Eval] : RegionAlg[In, InvRegion[In] with Eval] =
-        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, evalRegionAlg2, invRegionAlg2)
+        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, evalRegionAlg2, invRegionAlg)
 
       def pre2 : RegionAlg[EvalInv, Eval with InvRegion[EvalInv]] = pre[EvalInv]
 
       def o = makeRegion(closeS(pre2))
 
     println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
+
+      // method 2: merge by library
+      def evalInvAlg = combine[Eval, InvRegion[EvalInv], EvalInv](evalRegionAlg2, invRegionAlg)
+      def o2 = makeRegion(closeS(evalInvAlg))
+    println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
+
+    println()
   }
 
   def test4() {
@@ -171,11 +182,12 @@ object RegionExample {
     val o = { import reifyRegionAlg._; union(circle(1.0), circle(1.0)) }
     println(o.acceptI(evalRegionAlg).eval(0.5, 1.5))
 
+    // fake optimizeRegionAlg (without concrete invRegionAlg
     object optimizeRegionAlg extends OptimizeRegionAlg[OptimizeInv]
     val o2 = { import optimizeRegionAlg._; univ() }
     println(o2.acceptI(evalRegionAlg).eval(100, 100))
 
-    /* //error code TODO
+      /* // method 1: merge by hand
       def mixRExpInv[In] : RExp => InvRegion[In] => RExp with InvRegion[In] = a => b => new RExp with InvRegion[In] {
         val fromUniv = b.fromUniv
         val fromCircle = b.fromCircle
@@ -185,9 +197,14 @@ object RegionExample {
 
       def pre[In <: InvRegion[In] with RExp] : RegionAlg[In, InvRegion[In] with RExp] =
         regionMerge[In, RExp, InvRegion[In]](mixRExpInv, optimizeRegionAlg2, invRegionAlg2)
-        * 
         */
 
+      // method 2: merge by library
+      def optimizeInvAlg = combine[RExp, InvRegion[OptimizeInv], OptimizeInv](optimizeRegionAlg, invRegionAlg)
+      def o3 = makeRegion(closeS(optimizeInvAlg))
+    println(o3.acceptI(evalRegionAlg).eval(100, 100))
+
+    println()
   }
 
   def test3() = {
@@ -196,5 +213,7 @@ object RegionExample {
     val o = { import invAlg._; univ() }
     println(o.fromUniv)
     println(o.fromUnion)
+
+    println()
   }
 }
