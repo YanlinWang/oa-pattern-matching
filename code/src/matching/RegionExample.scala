@@ -35,7 +35,13 @@ object RegionExample {
   }
   def evalRegionAlg2[In <: InvRegion[In] with Eval] : PatternRegionAlg[In, Eval] = new EvalRegionAlg2[In] {}
 
+  trait Transform[Exp] {
+    def transform : Exp
+  }
+
   trait EvalInv extends Eval with InvRegion[EvalInv]
+
+  trait EvalInv2 extends InvRegion[EvalInv2] with Transform[Eval] with Eval
 
   trait InvRegion[R] {
     val fromUniv : Option[Unit]
@@ -109,12 +115,59 @@ object RegionExample {
     def optimizeRegionAlg[In <: InvRegion[In] with RExp] = new OptimizeRegionAlg[In] {}
   }
 
+  // eval region that supports pattern matching
+  trait EvalRegionAlg3[E, In <: InvRegion[In] with Transform[E]] extends PatternRegionAlg[In, Transform[E]] {
+    val alg : PatternRegionAlg[In, E]
+
+    def univ() : Transform[E] = new Transform[E] { def transform = alg.univ }
+    def circle(radius : Double) = new Transform[E] { def transform = alg.circle(radius) }
+    def union(reg1 : In, reg2 : In) = new Transform[E] {
+      def transform = (reg1, reg2) match {
+        case (PUniv(_ : Unit), _) => alg.univ
+        case (_, PUniv(_ : Unit)) => alg.univ
+        case _                    => alg.union(reg1, reg2)
+      }
+    }
+  }
+
+  def test5() = {
+      def evalAlg3 /*: PatternRegionAlg[EvalInv2, Transform[EvalInv2]] */ = new EvalRegionAlg3[Eval, EvalInv2] {
+        val alg : PatternRegionAlg[EvalInv2, Eval] = evalRegionAlg2
+      } // evalRegionAlg2[EvalInv2] }
+      def evalInvAlg = combine[Transform[Eval], InvRegion[EvalInv2], EvalInv2](evalAlg3, invRegionAlg)
+      def o = makeRegion(closeS(evalInvAlg))
+
+    println("test5::::")
+    println("Is (0.5,0.5) inside it? " + o.transform.eval(0.5, 0.5))
+  }
+
+  def test2() = {
+    println(">>> Testing EvalRegionAlg2")
+      // method 1: merge by hand
+      def pre[In <: InvRegion[In] with Eval] : RegionAlg[In, InvRegion[In] with Eval] =
+        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, evalRegionAlg2, invRegionAlg)
+
+      def pre2 : RegionAlg[EvalInv, Eval with InvRegion[EvalInv]] = pre[EvalInv]
+
+      def o = makeRegion(closeS(pre2))
+
+    println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
+
+      // method 2: merge by library
+      def evalInvAlg = combine[Eval, InvRegion[EvalInv], EvalInv](evalRegionAlg2, invRegionAlg)
+      def o2 = makeRegion(closeS(evalInvAlg))
+    println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
+
+    println()
+  }
+
   // Testing 
   def main(args : Array[String]) {
     test1()
     test2()
     test3()
     test4()
+    test5()
   }
 
   def makeRegion[R](alg : RegionAlg[R, R]) = { import alg._; union(circle(1.0), circle(1.0)) }
@@ -151,26 +204,6 @@ object RegionExample {
   }
 
   def closeS[S <: A with B, A, B](alg : RegionAlg[S, A with B]) : RegionAlg[A with B, A with B] = alg.asInstanceOf[RegionAlg[A with B, A with B]]
-
-  def test2() = {
-    println(">>> Testing EvalRegionAlg2")
-      // method 1: merge by hand
-      def pre[In <: InvRegion[In] with Eval] : RegionAlg[In, InvRegion[In] with Eval] =
-        regionMerge[In, Eval, InvRegion[In]](mixEvalInv, evalRegionAlg2, invRegionAlg)
-
-      def pre2 : RegionAlg[EvalInv, Eval with InvRegion[EvalInv]] = pre[EvalInv]
-
-      def o = makeRegion(closeS(pre2))
-
-    println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
-
-      // method 2: merge by library
-      def evalInvAlg = combine[Eval, InvRegion[EvalInv], EvalInv](evalRegionAlg2, invRegionAlg)
-      def o2 = makeRegion(closeS(evalInvAlg))
-    println("Is (0.5,0.5) inside it? " + o.eval(0.5, 0.5))
-
-    println()
-  }
 
   def test4() {
     println(">>> Testing ReifyRegionAlg")
