@@ -6,13 +6,11 @@ import core.Algebras2.Lifter
 object Matching {
 
   trait ExpAlg[In, Out] {
-    def Zero(i : Unit) : Out
     def Lit(x : Int) : Out
     def Add(e1 : In, e2 : In) : Out
   }
 
   trait InvExp[Exp] {
-    val fromZero : Option[Unit]
     val fromLit : Option[Int]
     val fromAdd : Option[(Exp, Exp)]
   }
@@ -21,17 +19,14 @@ object Matching {
     def Zero(i : Unit) = new InvExp[In] {
       val fromLit = None
       val fromAdd = None
-      val fromZero = Some(i)
     }
     def Lit(x : Int) = new InvExp[In] {
       val fromLit = Some(x)
       val fromAdd = None
-      val fromZero = None
     }
     def Add(e1 : In, e2 : In) = new InvExp[In] {
       val fromLit = None
       val fromAdd = Some(e1, e2)
-      val fromZero = None
     }
   }
   def invExpAlg[In] : ExpAlg[In, InvExp[In]] = new InvExpAlg[In] {}
@@ -47,7 +42,6 @@ object Matching {
   }*/
 
   trait PatternExpAlg[In <: InvExp[In], Out] extends ExpAlg[In, Out] { //Invertible observations for any constructor! 
-    object Zero { def unapply(e : In) : Option[Unit] = e.fromZero }
     object Lit { def unapply(e : In) : Option[Int] = e.fromLit }
     object Add { def unapply(e : In) : Option[(In, In)] = e.fromAdd }
   }
@@ -119,13 +113,11 @@ object Matching {
   def expMerge[S, A, B](mix : A => B => A with B, a1 : ExpAlg[S, A], a2 : ExpAlg[S, B]) : ExpAlg[S, A with B] = new ExpAlg[S, A with B] {
     def Lit(x : Int) : A with B = mix(a1.Lit(x))(a2.Lit(x))
     def Add(e1 : S, e2 : S) : A with B = mix(a1.Add(e1, e2))(a2.Add(e1, e2))
-    def Zero(i : Unit) : A with B = mix(a1.Zero({}))(a2.Zero({})) // TODO
   }
 
   def mixEvalInvExp[In] : Eval => InvExp[In] => Eval with InvExp[In] = a => b => new Eval with InvExp[In] {
     val fromLit = b.fromLit
     val fromAdd = b.fromAdd
-    val fromZero = b.fromZero
     def eval = a.eval
   }
 
