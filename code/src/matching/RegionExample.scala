@@ -86,10 +86,11 @@ object RegionExample {
   }
 
   def test5() = { // use combine
-      def evalAlg3 /*: PatternRegionAlg[EvalInv2, Transform[Eval]] */ = new EvalRegionAlg3[Eval, EvalInv2] {
-        val alg : PatternRegionAlg[EvalInv2, Eval] = evalRegionAlg2
+      def evalAlg3 : PatternRegionAlg[EvalInv2, Transform[Eval]] = new EvalRegionAlg3[Eval, EvalInv2] {
+        val alg : PatternRegionAlg[EvalInv2, Eval] = evalRegionAlg2[EvalInv2]
       }
-      def evalInvAlg = combine[Transform[Eval], InvRegion[EvalInv2], EvalInv2](evalAlg3, invRegionAlg)
+      def evalInvAlg : RegionAlg[EvalInv2, Transform[Eval] with InvRegion[EvalInv2]] =
+        combine[Transform[Eval], InvRegion[EvalInv2], EvalInv2](evalAlg3, invRegionAlg)
       def o = makeRegion(closeS[EvalInv2, Transform[Eval], InvRegion[EvalInv2]](evalInvAlg))
 
     println("test5 >>>")
@@ -105,18 +106,56 @@ object RegionExample {
         val fromUnion = y.fromUnion
       }
   }
+  /*
+  object liftTransInv_weird extends Lifter[Transform[Eval], InvRegion[EvalInv2]] with Eval {
+    var eval_res : Eval = null
+    def lift(x : Transform[Eval], y : InvRegion[EvalInv2]) : Transform[Eval] with InvRegion[EvalInv2] =
+      new Transform[Eval] with InvRegion[EvalInv2] {
+        def transform : Eval = x.transform
+        val fromUniv = y.fromUniv
+        val fromCircle = y.fromCircle
+        val fromUnion = y.fromUnion
+        eval_res = new Eval { def eval = transform.eval }
+      }
+    def eval = eval_res.eval
+  }
+  * 
+  */
 
   def test6() = { // use merge
     println("test6 >>>")
-      def evalAlg3 = new EvalRegionAlg3[Eval, EvalInv2] {
-        val alg : PatternRegionAlg[EvalInv2, Eval] = evalRegionAlg2
+    val evalAlg3 : PatternRegionAlg[EvalInv2, Transform[Eval]] =
+      new EvalRegionAlg3[Eval, EvalInv2] {
+        val alg : PatternRegionAlg[EvalInv2, Eval] = evalRegionAlg2[EvalInv2]
       }
-      def evalInvAlg = merge[Transform[Eval], InvRegion[EvalInv2], EvalInv2](liftTransInv, evalAlg3, invRegionAlg)
-    val o = makeRegion(closeS(evalInvAlg))
+
+    val evalInvAlg : RegionAlg[EvalInv2, Transform[Eval] with InvRegion[EvalInv2]] =
+      merge[Transform[Eval], InvRegion[EvalInv2], EvalInv2](liftTransInv, evalAlg3, invRegionAlg)
+
+    val pre : RegionAlg[Transform[Eval] with InvRegion[EvalInv2], Transform[Eval] with InvRegion[EvalInv2]] = closeS(evalInvAlg)
+
+    //val o : Transform[Eval] with InvRegion[EvalInv2] = makeRegion(pre)   // error
+    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; univ({}) } // correct
+    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; circle(1.0) } // correct
+    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(univ({}), circle(0.1)) } // correct
+    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(circle(0.1), univ({})) } // correct
+    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(circle(1.0), circle(1.0)) }
+
+    /* In union(circle(1.0), circle(1.0)) ,
+     * circle(1.0)  :  Transform[Eval] with InvRegion[EvalInv2]
+     * circle(1.0) is passes into union(,) function as argument reg1 (which requires to support eval)
+     * so it tries to cast 
+     * This is the reason of runtime class casting error.
+     */
+
     println("fromUniv: " + o.fromUniv)
     println("fromCircle: " + o.fromCircle)
     println("fromUnion: " + o.fromUnion)
-    println("eval:" + o.transform.eval(0.5, 0.5))
+    println("fromUnion: " + o.fromUnion.get._1.transform.eval(0.1, 0.1))
+
+    val trans = o.transform
+    val eva = trans.eval(0.5, 0.5)
+    println("eval:" + eva)
   }
 
   def test2() = {
@@ -145,7 +184,7 @@ object RegionExample {
     //    test2()
     //    test3()
     //    test4()
-    test5()
+    //    test5()
     test6()
   }
 
