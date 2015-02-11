@@ -121,7 +121,6 @@ object Matching {
     def eval = a.eval
   }
 
-  /*
   // crazy coercions
   def fun2(o : Eval with InvExp[EvalInvExp]) : EvalInvExp = new EvalInvExp() {
     val fromLit = o.fromLit
@@ -143,8 +142,6 @@ object Matching {
 
   def dual2(alg : ExpAlg[EvalInvExp, Eval with InvExp[EvalInvExp]]) : ExpAlg[Eval with InvExp[EvalInvExp], Eval with InvExp[EvalInvExp]] =
     alg.asInstanceOf[ExpAlg[Eval with InvExp[EvalInvExp], Eval with InvExp[EvalInvExp]]]
-    * 
-    */
 
   // To discuss
   def closeS[S <: A with B, A, B](alg : ExpAlg[S, A with B]) : ExpAlg[A with B, A with B] = alg.asInstanceOf[ExpAlg[A with B, A with B]]

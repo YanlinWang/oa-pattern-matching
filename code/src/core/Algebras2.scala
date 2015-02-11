@@ -33,6 +33,7 @@ object Algebras2 {
 
     //
     def close[S <: A with B, A, B](alg : F[S, A with B]) : F[A with B, A with B] = alg.asInstanceOf[F[A with B, A with B]]
+    //def close2[S <: A with B, A, B](alg : F[S, A with B]) : F[S, S] = null //alg.asInstanceOf[F[A with B, A with B]]
   }
 
   def createInstance[A](ih : java.lang.reflect.InvocationHandler)(implicit m : ClassTag[A]) : A = {
@@ -67,6 +68,13 @@ object Algebras2 {
     def empty[S](implicit m : ClassTag[F[S, Any]]) : F[S, Any] =
       createInstance[F[S, Any]](new java.lang.reflect.InvocationHandler() {
         def invoke(proxy : Object, method : java.lang.reflect.Method, args : Array[Object]) = new Object()
+      })
+
+    def close2[A, B, S <: A with B](alg : F[S, A with B])(implicit m : ClassTag[F[S, S]]) : F[S, S] =
+      createInstance[F[S, S]](new java.lang.reflect.InvocationHandler() {
+        def invoke(proxy : Object, method : java.lang.reflect.Method, args : Array[Object]) : Object = {
+          method.invoke(alg, args : _*).asInstanceOf[Object]
+        }
       })
   }
 

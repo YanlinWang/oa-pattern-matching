@@ -39,6 +39,7 @@ object RegionExample {
   trait EvalInv extends Eval with InvRegion[EvalInv]
 
   trait EvalInv2 extends InvRegion[EvalInv2] with Transform[Eval] with Eval
+  trait EvalInv3 extends InvRegion[EvalInv2] with Transform[EvalInv3] with Eval
 
   trait EvalRegionAlg3[E, In <: InvRegion[In] with Transform[E]] extends PatternRegionAlg[In, Transform[E]] {
     val alg : PatternRegionAlg[In, E]
@@ -46,6 +47,22 @@ object RegionExample {
     def univ(x : Unit) : Transform[E] = new Transform[E] { def transform = alg.univ({}) }
     def circle(radius : Double) = new Transform[E] { def transform = alg.circle(radius) }
     def union(reg1 : In, reg2 : In) = new Transform[E] {
+      def transform = (reg1, reg2) match {
+        case (univ(_ : Unit), _) => alg.univ({})
+        case (_, univ(_ : Unit)) => alg.univ({})
+        case _                   => alg.union(reg1, reg2)
+      }
+    }
+  }
+
+  //def evalRegionAlg3[E, In <: InvRegion[In] with Transform[E]] = new EvalRegionAlg3[E, In] {}
+
+  trait EvalRegionAlg4[E, In <: InvRegion[In] with Transform[In]] extends PatternRegionAlg[In, Transform[In]] {
+    val alg : PatternRegionAlg[In, In]
+
+    def univ(x : Unit) : Transform[In] = new Transform[In] { def transform = alg.univ({}) }
+    def circle(radius : Double) = new Transform[In] { def transform = alg.circle(radius) }
+    def union(reg1 : In, reg2 : In) = new Transform[In] {
       def transform = (reg1, reg2) match {
         case (univ(_ : Unit), _) => alg.univ({})
         case (_, univ(_ : Unit)) => alg.univ({})
@@ -106,21 +123,22 @@ object RegionExample {
         val fromUnion = y.fromUnion
       }
   }
-  /*
-  object liftTransInv_weird extends Lifter[Transform[Eval], InvRegion[EvalInv2]] with Eval {
-    var eval_res : Eval = null
-    def lift(x : Transform[Eval], y : InvRegion[EvalInv2]) : Transform[Eval] with InvRegion[EvalInv2] =
-      new Transform[Eval] with InvRegion[EvalInv2] {
-        def transform : Eval = x.transform
-        val fromUniv = y.fromUniv
-        val fromCircle = y.fromCircle
-        val fromUnion = y.fromUnion
-        eval_res = new Eval { def eval = transform.eval }
-      }
-    def eval = eval_res.eval
+
+  // crazy coercions
+  def fun2(o : Transform[Eval] with InvRegion[EvalInv2]) : EvalInv2 = new EvalInv2() {
+    val fromUniv = o.fromUniv
+    val fromCircle = o.fromCircle
+    val fromUnion = o.fromUnion
+    def transform = o.transform
+    def eval = o.transform.eval
   }
-  * 
-  */
+
+  def fun(alg : RegionAlg[EvalInv2, Transform[Eval] with InvRegion[EvalInv2]]) : RegionAlg[EvalInv2, EvalInv2] =
+    new RegionAlg[EvalInv2, EvalInv2] {
+      def univ(x : Unit) = fun2(alg.univ({}))
+      def circle(r : Double) = fun2(alg.circle(r))
+      def union(r1 : EvalInv2, r2 : EvalInv2) = fun2(alg.union(r1, r2))
+    }
 
   def test6() = { // use merge
     println("test6 >>>")
@@ -128,18 +146,23 @@ object RegionExample {
       new EvalRegionAlg3[Eval, EvalInv2] {
         val alg : PatternRegionAlg[EvalInv2, Eval] = evalRegionAlg2[EvalInv2]
       }
-
+    /*
+    val evalAlg4 : PatternRegionAlg[EvalInv3, Transform[EvalInv3]] =
+      new EvalRegionAlg4[Eval, EvalInv3] {
+        val alg : PatternRegionAlg[EvalInv3, EvalInv3] = evalRegionAlg2[EvalInv3]
+      }
+  */
     val evalInvAlg : RegionAlg[EvalInv2, Transform[Eval] with InvRegion[EvalInv2]] =
       merge[Transform[Eval], InvRegion[EvalInv2], EvalInv2](liftTransInv, evalAlg3, invRegionAlg)
 
-    val pre : RegionAlg[Transform[Eval] with InvRegion[EvalInv2], Transform[Eval] with InvRegion[EvalInv2]] = closeS(evalInvAlg)
+    //    val pre : RegionAlg[Transform[Eval] with InvRegion[EvalInv2], Transform[Eval] with InvRegion[EvalInv2]] = closeS(evalInvAlg)
+    //    val pre : RegionAlg[EvalInv2, EvalInv2] = closeS2(evalInvAlg)
+    val pre : RegionAlg[EvalInv2, EvalInv2] = fun(evalInvAlg)
 
     //val o : Transform[Eval] with InvRegion[EvalInv2] = makeRegion(pre)   // error
-    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; univ({}) } // correct
-    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; circle(1.0) } // correct
-    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(univ({}), circle(0.1)) } // correct
-    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(circle(0.1), univ({})) } // correct
-    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(circle(1.0), circle(1.0)) }
+
+    //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(circle(1.0), circle(1.0)) }
+    val o : EvalInv2 = { import pre._; union(circle(1.0), circle(1.0)) }
 
     /* In union(circle(1.0), circle(1.0)) ,
      * circle(1.0)  :  Transform[Eval] with InvRegion[EvalInv2]
@@ -151,10 +174,10 @@ object RegionExample {
     println("fromUniv: " + o.fromUniv)
     println("fromCircle: " + o.fromCircle)
     println("fromUnion: " + o.fromUnion)
-    println("fromUnion: " + o.fromUnion.get._1.transform.eval(0.1, 0.1))
+    println("fromUnion: " + o.fromUnion.get._1.transform.eval(5.1, 0.1))
 
     val trans = o.transform
-    val eva = trans.eval(0.5, 0.5)
+    val eva = trans.eval(1.5, 0.5)
     println("eval:" + eva)
   }
 
@@ -222,6 +245,12 @@ object RegionExample {
   }
 
   def closeS[S <: A with B, A, B](alg : RegionAlg[S, A with B]) : RegionAlg[A with B, A with B] = alg.asInstanceOf[RegionAlg[A with B, A with B]]
+
+  def closeS2[S <: A with B, A, B](alg : RegionAlg[S, A with B]) : RegionAlg[S, S] = new RegionAlg[S, S] {
+    def univ(x : Unit) = alg.univ({}).asInstanceOf[S]
+    def circle(r : Double) = alg.circle(r).asInstanceOf[S]
+    def union(reg1 : S, reg2 : S) = alg.union(reg1, reg2).asInstanceOf[S]
+  }
 
   def test3() = {
     println(">>> Testing InvRegionAlg")
