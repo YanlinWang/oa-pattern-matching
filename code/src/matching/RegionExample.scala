@@ -1,6 +1,7 @@
 package matching
 import core.Algebras2.AlgebraDefault
 import core.Algebras2.Lifter
+import scala.reflect._
 
 object RegionExample {
   object RegionComb extends AlgebraDefault[RegionAlg]
@@ -37,7 +38,6 @@ object RegionExample {
   trait Transform[Exp] { def transform : Exp }
 
   trait EvalInv extends Eval with InvRegion[EvalInv]
-
   trait EvalInv2 extends InvRegion[EvalInv2] with Transform[Eval] with Eval
   trait EvalInv3 extends InvRegion[EvalInv2] with Transform[EvalInv3] with Eval
 
@@ -70,6 +70,20 @@ object RegionExample {
       }
     }
   }
+
+  def createInstance[A](ih : java.lang.reflect.InvocationHandler)(implicit m : ClassTag[A]) : A = {
+    java.lang.reflect.Proxy.newProxyInstance(m.runtimeClass.getClassLoader, Array(m.runtimeClass), ih).asInstanceOf[A]
+  }
+
+  /*
+  def trans2E[E](trans : Transform[E])(implicit m : ClassTag[E]) : E =
+    createInstance[E](new java.lang.reflect.InvocationHandler() {
+      def invoke(proxy : Object, method : java.lang.reflect.Method, args : Array[Object]) : Object = {
+        method.invoke(trans.transform, args : _*)
+      }
+    })
+    * 
+    */
 
   trait InvRegion[R] {
     val fromUniv : Option[Unit]
@@ -164,13 +178,6 @@ object RegionExample {
     //    val o : Transform[Eval] with InvRegion[EvalInv2] = { import pre._; union(circle(1.0), circle(1.0)) }
     val o : EvalInv2 = { import pre._; union(circle(1.0), circle(1.0)) }
 
-    /* In union(circle(1.0), circle(1.0)) ,
-     * circle(1.0)  :  Transform[Eval] with InvRegion[EvalInv2]
-     * circle(1.0) is passes into union(,) function as argument reg1 (which requires to support eval)
-     * so it tries to cast 
-     * This is the reason of runtime class casting error.
-     */
-
     println("fromUniv: " + o.fromUniv)
     println("fromCircle: " + o.fromCircle)
     println("fromUnion: " + o.fromUnion)
@@ -179,6 +186,11 @@ object RegionExample {
     val trans = o.transform
     val eva = trans.eval(1.5, 0.5)
     println("eval:" + eva)
+  }
+
+  def test7() = { // Ideal
+    val evalAlg : PatternRegionAlg[EvalInv, Eval] = null
+
   }
 
   def test2() = {
@@ -204,11 +216,10 @@ object RegionExample {
   // Testing 
   def main(args : Array[String]) {
     //    test1()
-    //    test2()
+    test2()
     //    test3()
-    //    test4()
-    //    test5()
-    test6()
+    //        test5()
+    //    test6()
   }
 
   def makeRegion[R](alg : RegionAlg[R, R]) = { import alg._; union(circle(1.0), circle(1.0)) }
